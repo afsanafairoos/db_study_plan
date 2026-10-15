@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DB StudyPal — Unit 8: Database Management</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --paper:#F6F4EE;
+    --panel:#FFFFFF;
+    --ink:#1B2430;
+    --ink-soft:#5B6472;
+    --rule:#D8D3C4;
+    --key:#C9682B;      /* primary key / terracotta-avoided -> using a deep amber-ochre instead */
+    --fk:#2F6F5E;        /* foreign key green */
+    --attr:#3C5C8F;      /* attribute blue */
+    --accent:#1B2430;
+    --grid-line: rgba(27,36,48,0.08);
+    --good:#2F6F5E;
+    --bad:#B23A3A;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--paper);
+    background-size: 28px 28px;
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    line-height:1.5;
+  }
+  h1,h2,h3,.display{font-family:'Fraunces', serif;}
+  code, .mono, .kbd{font-family:'IBM Plex Mono', monospace;}
+
+  /* ===== Top bar ===== */
+  header.top{
+    position:sticky; top:0; z-index:40;
+    background:rgba(246,244,238,0.92);
+    backdrop-filter:blur(6px);
+    border-bottom:1.5px solid var(--ink);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{
+    width:34px;height:34px; border:2px solid var(--ink); border-radius:4px;
+    display:flex; flex-direction:column; justify-content:center; gap:2px; padding:4px;
+    background:var(--panel);
+  }
+  .brand-mark span{display:block; height:2px; background:var(--ink); border-radius:1px;}
+  .brand-mark span:nth-child(2){width:70%;}
+  .brand-title{font-weight:700; font-size:1.05rem; letter-spacing:-0.01em;}
+  .brand-sub{font-size:0.72rem; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+
+  nav.tabs{display:flex; gap:4px; flex-wrap:wrap;}
+  .tab-btn{
+    font-family:'IBM Plex Mono', monospace; font-size:0.78rem;
+    border:1.5px solid var(--ink); background:transparent; color:var(--ink);
+    padding:7px 12px; border-radius:3px; cursor:pointer; white-space:nowrap;
+    transition:all .15s ease;
+  }
+  .tab-btn:hover{background:var(--ink); color:var(--paper);}
+  .tab-btn.active{background:var(--ink); color:var(--paper);}
+
+  main{max-width:1180px; margin:0 auto; padding:28px 20px 90px;}
+  section.view{display:none;}
+  section.view.active{display:block; animation:fadein .25s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+  /* ===== Hero ===== */
+  .hero{
+    display:grid; grid-template-columns:1.3fr 1fr; gap:28px; align-items:center;
+    margin-bottom:36px;
+  }
+  @media (max-width:820px){ .hero{grid-template-columns:1fr;} }
+  .hero h1{font-size:2.6rem; line-height:1.05; margin:0 0 12px; font-weight:600;}
+  .hero h1 em{font-style:italic; color:var(--key);}
+  .hero p{color:var(--ink-soft); font-size:1.02rem; max-width:46ch;}
+  .hero-cta{display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;}
+  .btn{
+    font-family:'IBM Plex Mono', monospace; font-size:0.82rem;
+    border:1.5px solid var(--ink); padding:10px 16px; border-radius:3px;
+    cursor:pointer; background:var(--ink); color:var(--paper); font-weight:500;
+  }
+  .btn.ghost{background:transparent; color:var(--ink);}
+  .btn:hover{opacity:0.85;}
+
+  .erd-hero{
+    background:var(--panel); border:1.5px solid var(--ink); border-radius:6px;
+    padding:20px; position:relative; box-shadow:5px 5px 0 var(--ink);
+  }
+  .erd-row{display:flex; align-items:center; justify-content:center; gap:10px; margin:14px 0;}
+  .entity-box{
+    border:2px solid var(--ink); background:var(--paper); padding:8px 14px;
+    font-family:'IBM Plex Mono',monospace; font-size:0.78rem; font-weight:600; border-radius:2px;
+  }
+  .rel-diamond-wrap{
+    width:80px; height:56px; display:flex; align-items:center; justify-content:center; position:relative;
+  }
+  .rel-diamond{
+    position:absolute; width:56px; height:56px; background:#EFE7D3; border:2px solid var(--ink);
+    transform:rotate(45deg);
+  }
+  .rel-diamond-label{
+    position:relative; font-size:0.66rem; font-family:'IBM Plex Mono',monospace; text-align:center;
+    pointer-events:none;
+  }
+  .card-line{height:2px; background:var(--ink); flex:1; max-width:36px;}
+  .attr-orbit{display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:14px;}
+  .attr-pill{
+    border:1.5px solid var(--attr); color:var(--attr); border-radius:50%;
+    padding:8px 6px; font-size:0.64rem; font-family:'IBM Plex Mono',monospace;
+    width:60px; height:34px; display:flex; align-items:center; justify-content:center; text-align:center;
+    line-height:1.1;
+  }
+  .attr-pill.key{border-color:var(--key); color:var(--key); text-decoration:underline;}
+
+  /* ===== Section headers ===== */
+  .section-head{display:flex; align-items:baseline; gap:12px; margin:44px 0 18px;}
+  .section-head h2{font-size:1.5rem; margin:0; font-weight:600;}
+  .section-head .idx{font-family:'IBM Plex Mono',monospace; color:var(--key); font-size:0.85rem; font-weight:600;}
+  .section-head .rule{flex:1; height:1.5px; background:var(--rule);}
+
+  /* ===== Notes / accordion ===== */
+  .topic-list{display:flex; flex-direction:column; gap:10px;}
+  .topic{
+    background:var(--panel); border:1.5px solid var(--ink); border-radius:6px; overflow:hidden;
+  }
+  .topic-head{
+    padding:14px 18px; display:flex; align-items:center; justify-content:between; gap:12px;
+    cursor:pointer; user-select:none; justify-content:space-between;
+  }
+  .topic-head:hover{background:#FBFAF6;}
+  .topic-head-left{display:flex; align-items:center; gap:12px;}
+  .topic-num{
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--ink-soft);
+    border:1px solid var(--rule); border-radius:3px; padding:2px 6px;
+  }
+  .topic-title{font-weight:600; font-size:1rem;}
+  .topic-chevron{transition:transform .2s ease; color:var(--ink-soft); font-size:0.9rem;}
+  .topic.open .topic-chevron{transform:rotate(90deg);}
+  .topic-body{max-height:0; overflow:hidden; transition:max-height .3s ease;}
+  .topic-body-inner{padding:0 18px 18px; color:var(--ink); font-size:0.92rem;}
+  .topic-body-inner ul{margin:8px 0; padding-left:20px;}
+  .topic-body-inner li{margin:4px 0;}
+  .topic-body-inner .sub{color:var(--ink-soft); font-size:0.86rem;}
+  .pill-row{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0;}
+  .pill{
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; border-radius:20px;
+    padding:3px 10px; border:1.5px solid var(--ink);
+  }
+  .pill.adv{border-color:var(--good); color:var(--good);}
+  .pill.dis{border-color:var(--bad); color:var(--bad);}
+  code.inline{
+    background:#EFE7D3; border:1px solid var(--rule); border-radius:3px;
+    padding:1px 6px; font-size:0.85em;
+  }
+  .sql-block{
+    background:#1B2430; color:#E9E4D6; border-radius:6px; padding:14px 16px;
+    font-family:'IBM Plex Mono',monospace; font-size:0.82rem; overflow-x:auto; margin:10px 0;
+    white-space:pre;
+  }
+  .sql-block .kw{color:#D9A05B;}
+  .sql-block .str{color:#8FBF9F;}
+  .sql-block .com{color:#7C889C; font-style:italic;}
+
+  /* ===== ER Diagram legend / interactive components section ===== */
+  .legend-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; margin:16px 0;}
+  .legend-item{
+    background:var(--panel); border:1.5px solid var(--ink); border-radius:6px; padding:12px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .shape{width:38px; height:26px; flex-shrink:0; position:relative;}
+  /* Entity: plain rectangle */
+  .shape.entity{border:2px solid var(--ink); border-radius:1px;}
+  /* Weak entity: double-bordered rectangle */
+  .shape.weak{border:2px solid var(--ink); box-shadow:0 0 0 3px var(--paper), 0 0 0 5px var(--ink); margin:0 8px;}
+  /* Attribute: plain ellipse */
+  .shape.attribute{border:2px solid var(--attr); border-radius:50%;}
+  /* Key attribute: ellipse, underlined label sits outside via .legend-label */
+  .shape.keyattr{border:2px solid var(--key); border-radius:50%;}
+  /* Multivalued attribute: double ellipse */
+  .shape.mvattr{border:2px solid var(--attr); border-radius:50%; box-shadow:0 0 0 3px var(--paper), 0 0 0 5px var(--attr); margin:0 8px;}
+  /* Derived attribute: dashed ellipse */
+  .shape.derived{border:2px dashed var(--attr); border-radius:50%;}
+  /* Relationship: diamond, drawn with a rotated square clipped to 45deg like a rhombus */
+  .shape.relationship{
+    width:30px; height:30px; border:2px solid var(--ink); background:#EFE7D3;
+    transform:rotate(45deg); margin:0 10px;
+  }
+  /* Weak entity relationship: double-bordered diamond */
+  .shape.weakrel{
+    width:26px; height:26px; border:2px solid var(--ink); background:#EFE7D3;
+    box-shadow:0 0 0 3px var(--paper), 0 0 0 5px var(--ink);
+    transform:rotate(45deg); margin:0 14px;
+  }
+  .legend-label{font-family:'IBM Plex Mono',monospace; font-size:0.76rem;}
+  .legend-label.underline{text-decoration:underline;}
+
+  /* ===== Normalization steps ===== */
+  .norm-steps{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:800px){.norm-steps{grid-template-columns:1fr;}}
+  .norm-card{
+    background:var(--panel); border:1.5px solid var(--ink); border-radius:8px; padding:16px;
+    position:relative;
+  }
+  .norm-card .tag{
+    position:absolute; top:-11px; left:14px; background:var(--key); color:#fff;
+    font-family:'IBM Plex Mono',monospace; font-size:0.7rem; padding:2px 8px; border-radius:20px;
+  }
+  .norm-card h4{margin:10px 0 6px; font-size:0.95rem;}
+  .norm-card p{font-size:0.84rem; color:var(--ink-soft); margin:0;}
+
+  /* ===== Flashcards ===== */
+  .fc-toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;}
+  .fc-progress{font-family:'IBM Plex Mono',monospace; font-size:0.82rem; color:var(--ink-soft);}
+  .fc-stage{display:flex; flex-direction:column; align-items:center; gap:18px;}
+  .flashcard{
+    width:100%; max-width:560px; height:280px; perspective:1400px; cursor:pointer;
+  }
+  .flashcard-inner{
+    position:relative; width:100%; height:100%; transition:transform .5s cubic-bezier(.2,.8,.2,1);
+    transform-style:preserve-3d;
+  }
+  .flashcard.flipped .flashcard-inner{transform:rotateY(180deg);}
+  .fc-face{
+    position:absolute; inset:0; backface-visibility:hidden; border-radius:10px;
+    border:1.5px solid var(--ink); display:flex; flex-direction:column; align-items:center;
+    justify-content:center; text-align:center; padding:30px; box-shadow:6px 6px 0 var(--ink);
+  }
+  .fc-front{background:var(--panel);}
+  .fc-back{background:var(--ink); color:var(--paper); transform:rotateY(180deg);}
+  .fc-face .cat{
+    position:absolute; top:14px; left:16px; font-family:'IBM Plex Mono',monospace;
+    font-size:0.68rem; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.05em;
+  }
+  .fc-back .cat{color:#B8BFC9;}
+  .fc-face .txt{font-size:1.15rem; font-weight:600; line-height:1.4;}
+  .fc-back .txt{font-size:1rem; font-weight:400; font-family:'Inter',sans-serif;}
+  .fc-hint{font-size:0.72rem; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; position:absolute; bottom:12px;}
+  .fc-controls{display:flex; gap:10px;}
+  .fc-nav-btn{
+    border:1.5px solid var(--ink); background:transparent; width:42px; height:42px; border-radius:50%;
+    cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center;
+  }
+  .fc-nav-btn:hover{background:var(--ink); color:var(--paper);}
+  .fc-shuffle{
+    font-family:'IBM Plex Mono',monospace; font-size:0.78rem; border:1.5px solid var(--ink);
+    background:transparent; padding:9px 14px; border-radius:20px; cursor:pointer;
+  }
+  .fc-shuffle:hover{background:var(--ink); color:var(--paper);}
+  .fc-filter{display:flex; gap:6px; flex-wrap:wrap;}
+  .fc-filter button{
+    font-family:'IBM Plex Mono',monospace; font-size:0.7rem; border:1px solid var(--rule);
+    background:var(--panel); padding:5px 10px; border-radius:20px; cursor:pointer; color:var(--ink-soft);
+  }
+  .fc-filter button.active{border-color:var(--ink); color:var(--ink); background:#EFE7D3;}
+
+  /* ===== Quiz ===== */
+  .quiz-shell{max-width:680px; margin:0 auto;}
+  .quiz-progress-bar{height:6px; background:var(--rule); border-radius:4px; overflow:hidden; margin-bottom:22px;}
+  .quiz-progress-fill{height:100%; background:var(--key); transition:width .3s ease; width:0%;}
+  .quiz-card{
+    background:var(--panel); border:1.5px solid var(--ink); border-radius:10px; padding:26px;
+    box-shadow:6px 6px 0 var(--ink);
+  }
+  .quiz-meta{display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:0.76rem; color:var(--ink-soft); margin-bottom:12px;}
+  .quiz-q{font-size:1.1rem; font-weight:600; margin-bottom:18px; line-height:1.4;}
+  .quiz-options{display:flex; flex-direction:column; gap:10px;}
+  .quiz-opt{
+    text-align:left; border:1.5px solid var(--ink); background:transparent; border-radius:6px;
+    padding:12px 14px; cursor:pointer; font-size:0.92rem; font-family:'Inter',sans-serif;
+    display:flex; align-items:center; gap:10px;
+  }
+  .quiz-opt:hover{background:#FBFAF6;}
+  .quiz-opt .letter{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; width:22px; height:22px; border-radius:50%;
+    border:1.5px solid var(--ink); display:flex; align-items:center; justify-content:center; font-size:0.72rem; flex-shrink:0;
+  }
+  .quiz-opt.correct{background:#E5F0EA; border-color:var(--good);}
+  .quiz-opt.correct .letter{background:var(--good); border-color:var(--good); color:#fff;}
+  .quiz-opt.wrong{background:#F7E9E9; border-color:var(--bad);}
+  .quiz-opt.wrong .letter{background:var(--bad); border-color:var(--bad); color:#fff;}
+  .quiz-opt:disabled{cursor:default;}
+  .quiz-explain{
+    margin-top:16px; padding:12px 14px; background:#F6F4EE; border-left:3px solid var(--key);
+    font-size:0.86rem; border-radius:0 6px 6px 0; display:none;
+  }
+  .quiz-explain.show{display:block;}
+  .quiz-footer{display:flex; justify-content:space-between; align-items:center; margin-top:20px;}
+  .quiz-result{text-align:center; padding:40px 20px;}
+  .quiz-result .score{font-family:'Fraunces',serif; font-size:3.2rem; font-weight:600; color:var(--key);}
+  .quiz-result p{color:var(--ink-soft);}
+
+  /* ===== SQL Playground ===== */
+  .sql-lab{
+    background:var(--panel); border:1.5px solid var(--ink); border-radius:10px; overflow:hidden;
+    box-shadow:6px 6px 0 var(--ink); margin-bottom:20px;
+  }
+  .sql-lab-head{
+    background:var(--ink); color:var(--paper); padding:10px 16px; font-family:'IBM Plex Mono',monospace;
+    font-size:0.78rem; display:flex; justify-content:space-between; align-items:center;
+  }
+  .sql-lab-body{padding:18px;}
+  .sql-scenario{font-size:0.88rem; color:var(--ink-soft); margin-bottom:12px;}
+  .sql-answer-toggle{
+    font-family:'IBM Plex Mono',monospace; font-size:0.76rem; border:1.5px solid var(--ink);
+    background:transparent; padding:7px 12px; border-radius:4px; cursor:pointer; margin-top:10px;
+  }
+  .sql-answer{
+    margin-top:10px; display:none;
+  }
+  .sql-answer.show{display:block;}
+
+  /* ===== Reference tables ===== */
+  .ref-table{width:100%; border-collapse:collapse; margin:14px 0; font-size:0.86rem;}
+  .ref-table th, .ref-table td{border:1px solid var(--rule); padding:8px 10px; text-align:left;}
+  .ref-table th{background:var(--ink); color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:0.76rem;}
+  .ref-table tr:nth-child(even){background:#FBFAF6;}
+
+  footer.app-footer{
+    text-align:center; padding:30px 20px; color:var(--ink-soft); font-size:0.78rem;
+    font-family:'IBM Plex Mono',monospace; border-top:1.5px solid var(--rule); margin-top:40px;
+  }
+
+  ::selection{background:var(--key); color:#fff;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="brand-mark"><span></span><span></span><span></span></div>
+      <div>
+        <div class="brand-title">DB StudyPal</div>
+        <div class="brand-sub">A/L ICT · Unit 8 · Database Management</div>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab-btn active" data-view="home">Home</button>
+      <button class="tab-btn" data-view="notes">Notes</button>
+      <button class="tab-btn" data-view="erd">ER Diagram</button>
+      <button class="tab-btn" data-view="normalization">Normalization</button>
+      <button class="tab-btn" data-view="sql">SQL Lab</button>
+      <button class="tab-btn" data-view="flashcards">Flashcards</button>
+      <button class="tab-btn" data-view="quiz">Quiz</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ HOME ============ -->
+  <section class="view active" id="view-home">
+    <div class="hero">
+      <div>
+        <h1>Learn how data becomes <em>information</em>.</h1>
+        <p>A self-paced companion for Unit 8 — from database models and ER diagrams to SQL and normalization. Built for A/L ICT students following the NIE syllabus (2017).</p>
+        <div class="hero-cta">
+          <button class="btn" onclick="switchView('notes')">Start reading →</button>
+          <button class="btn ghost" onclick="switchView('quiz')">Jump to quiz</button>
+        </div>
+      </div>
+      <div class="erd-hero">
+        <div class="erd-row">
+          <div class="entity-box">TEACHER</div>
+          <div class="card-line"></div>
+          <div class="rel-diamond-wrap"><div class="rel-diamond"></div><div class="rel-diamond-label">assigns</div></div>
+          <div class="card-line"></div>
+          <div class="entity-box">CLASS</div>
+        </div>
+        <div class="attr-orbit">
+          <div class="attr-pill key">EmpNo</div>
+          <div class="attr-pill">Name</div>
+          <div class="attr-pill">Role</div>
+          <div class="attr-pill key">ClassCode</div>
+          <div class="attr-pill">Grade</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-head"><span class="idx">8.0</span><h2>What's inside</h2><div class="rule"></div></div>
+    <div class="legend-grid">
+      <div class="legend-item"><div class="shape entity"></div><div class="legend-label">Notes — all 5 competency levels, expandable</div></div>
+      <div class="legend-item"><div class="shape relationship"></div><div class="legend-label">Interactive ER diagram legend + build practice</div></div>
+      <div class="legend-item"><div class="shape mvattr"></div><div class="legend-label">Normalization walkthrough, 1NF → 3NF</div></div>
+      <div class="legend-item"><div class="shape keyattr"></div><div class="legend-label">SQL Lab — real query scenarios with answers</div></div>
+      <div class="legend-item"><div class="shape weak"></div><div class="legend-label">60+ flashcards by category</div></div>
+      <div class="legend-item"><div class="shape attribute"></div><div class="legend-label">20-question auto-marked quiz</div></div>
+    </div>
+  </section>
+
+  <!-- ============ NOTES ============ -->
+  <section class="view" id="view-notes">
+    <div class="section-head"><span class="idx">8.1</span><h2>Database Models</h2><div class="rule"></div></div>
+    <div class="topic-list" id="notes-81"></div>
+
+    <div class="section-head"><span class="idx">8.2</span><h2>Components of the Relational Database Model</h2><div class="rule"></div></div>
+    <div class="topic-list" id="notes-82"></div>
+
+    <div class="section-head"><span class="idx">8.3</span><h2>Main Components of a Database System</h2><div class="rule"></div></div>
+    <div class="topic-list" id="notes-83"></div>
+
+    <div class="section-head"><span class="idx">8.4</span><h2>Conceptual Schema — ER Diagrams</h2><div class="rule"></div></div>
+    <div class="topic-list" id="notes-84"></div>
+
+    <div class="section-head"><span class="idx">8.5</span><h2>Logical Schema, Keys &amp; Normalization</h2><div class="rule"></div></div>
+    <div class="topic-list" id="notes-85"></div>
+  </section>
+
+  <!-- ============ ERD ============ -->
+  <section class="view" id="view-erd">
+    <div class="section-head"><span class="idx">8.4</span><h2>ER Diagram Notation</h2><div class="rule"></div></div>
+    <p style="color:var(--ink-soft); max-width:64ch;">Every symbol in an ER diagram encodes something specific. Match the shape to its meaning before you attempt to draw one.</p>
+    <div class="legend-grid" id="erd-legend"></div>
+
+    <div class="section-head"><span class="idx">8.4</span><h2>Worked example: TIMS scenario</h2><div class="rule"></div></div>
+    <div class="topic" style="margin-bottom:20px;">
+      <div class="topic-head" onclick="toggleTopic(this)">
+        <div class="topic-head-left"><span class="topic-num">CASE</span><span class="topic-title">Teachers' Information Management System</span></div>
+        <span class="topic-chevron">▸</span>
+      </div>
+      <div class="topic-body">
+        <div class="topic-body-inner">
+          <p>ABC College needs a database to manage <strong>Teachers</strong>, <strong>Classes</strong>, and <strong>Subjects</strong>. Key facts from the scenario:</p>
+          <ul>
+            <li>Teachers have: EmpNo (key), Name, Address, ContactNo, Date of Appointment, Username, Password, Role.</li>
+            <li>A teacher can teach more than one subject; a subject can have more than one teacher — <strong>many-to-many</strong>.</li>
+            <li>Each class has a ClassCode (key), Grade, Location, and exactly one teacher-in-charge — <strong>one-to-one</strong> for that relationship.</li>
+            <li>One teacher <em>assigns</em> subjects to classes.</li>
+          </ul>
+          <p class="sub">This is exactly the kind of scenario A/L exam papers use — identify entities first, then attributes, then relationship cardinalities.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-head"><span class="idx">practice</span><h2>Build the cardinality</h2><div class="rule"></div></div>
+    <div id="erd-practice"></div>
+
+    <div class="section-head"><span class="idx">8.4</span><h2>ER → Relational schema mapping</h2><div class="rule"></div></div>
+    <div class="topic-list" id="notes-erd-map"></div>
+  </section>
+
+  <!-- ============ NORMALIZATION ============ -->
+  <section class="view" id="view-normalization">
+    <div class="section-head"><span class="idx">8.5</span><h2>Why normalize?</h2><div class="rule"></div></div>
+    <p style="max-width:64ch; color:var(--ink-soft);">Normalization removes redundant data and prevents three anomalies. Tap each card.</p>
+    <div class="norm-steps" id="anomaly-cards"></div>
+
+    <div class="section-head"><span class="idx">8.5</span><h2>Normal forms</h2><div class="rule"></div></div>
+    <div class="norm-steps" id="normalform-cards"></div>
+
+    <div class="section-head"><span class="idx">8.5</span><h2>2NF walkthrough</h2><div class="rule"></div></div>
+    <div class="topic" style="margin-bottom:14px;">
+      <div class="topic-head" onclick="toggleTopic(this)">
+        <div class="topic-head-left"><span class="topic-num">EG</span><span class="topic-title">Removing partial dependency from StudentProject</span></div>
+        <span class="topic-chevron">▸</span>
+      </div>
+      <div class="topic-body"><div class="topic-body-inner">
+        <p>Original table (candidate key = StudentID + ProjectNo):</p>
+        <table class="ref-table"><tr><th>StudentID</th><th>ProjectNo</th><th>StudentName</th><th>ProjectName</th></tr>
+        <tr><td>S01</td><td>199</td><td>Katie</td><td>Geo Location</td></tr>
+        <tr><td>S02</td><td>120</td><td>Ollie</td><td>Cluster Exploration</td></tr></table>
+        <p><code class="inline">StudentName</code> depends only on <code class="inline">StudentID</code>, and <code class="inline">ProjectName</code> only on <code class="inline">ProjectNo</code> — both are <strong>partial dependencies</strong>. Decompose:</p>
+        <table class="ref-table"><tr><th>StudentInfo</th></tr><tr><td>StudentID, ProjectNo, StudentName</td></tr></table>
+        <table class="ref-table"><tr><th>ProjectInfo</th></tr><tr><td>ProjectNo, ProjectName</td></tr></table>
+      </div></div>
+    </div>
+
+    <div class="section-head"><span class="idx">8.5</span><h2>3NF walkthrough</h2><div class="rule"></div></div>
+    <div class="topic">
+      <div class="topic-head" onclick="toggleTopic(this)">
+        <div class="topic-head-left"><span class="topic-num">EG</span><span class="topic-title">Removing transitive dependency from Authors</span></div>
+        <span class="topic-chevron">▸</span>
+      </div>
+      <div class="topic-body"><div class="topic-body-inner">
+        <p>Author_ID → Author → Author_Nationality is a <strong>transitive dependency</strong> (Nationality depends on Author, which depends on Author_ID, not directly on the key alongside Book). Split into two tables: <code class="inline">Books(Book_ID, Book, Author_ID)</code> and <code class="inline">Authors(Author_ID, Author, Author_Nationality)</code>. This cuts duplication and protects data integrity.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ============ SQL LAB ============ -->
+  <section class="view" id="view-sql">
+    <div class="section-head"><span class="idx">SQL</span><h2>Query scenarios</h2><div class="rule"></div></div>
+    <p style="max-width:64ch; color:var(--ink-soft);">Read each scenario, try writing the query yourself, then reveal the answer.</p>
+    <div id="sql-scenarios"></div>
+
+    <div class="section-head"><span class="idx">ref</span><h2>Quick reference</h2><div class="rule"></div></div>
+    <table class="ref-table">
+      <tr><th>Category</th><th>Commands</th></tr>
+      <tr><td>DDL</td><td>CREATE, ALTER, DROP, TRUNCATE, RENAME</td></tr>
+      <tr><td>DML</td><td>SELECT, INSERT, UPDATE, DELETE</td></tr>
+      <tr><td>Constraints</td><td>NOT NULL, UNIQUE, PRIMARY KEY, FOREIGN KEY, CHECK, DEFAULT</td></tr>
+      <tr><td>Joins</td><td>INNER, LEFT, RIGHT, FULL OUTER</td></tr>
+      <tr><td>Aggregate fns</td><td>MAX(), MIN(), COUNT(), AVG(), SUM()</td></tr>
+    </table>
+  </section>
+
+  <!-- ============ FLASHCARDS ============ -->
+  <section class="view" id="view-flashcards">
+    <div class="section-head"><span class="idx">flip</span><h2>Flashcards</h2><div class="rule"></div></div>
+    <div class="fc-toolbar">
+      <div class="fc-filter" id="fc-filter"></div>
+      <div class="fc-progress" id="fc-progress">1 / 60</div>
+    </div>
+    <div class="fc-stage">
+      <div class="flashcard" id="flashcard" onclick="flipCard()">
+        <div class="flashcard-inner">
+          <div class="fc-face fc-front">
+            <div class="cat" id="fc-cat-front">TERM</div>
+            <div class="txt" id="fc-front-text">Loading…</div>
+            <div class="fc-hint">tap to flip</div>
+          </div>
+          <div class="fc-face fc-back">
+            <div class="cat" id="fc-cat-back">DEFINITION</div>
+            <div class="txt" id="fc-back-text">Loading…</div>
+            <div class="fc-hint">tap to flip back</div>
+          </div>
+        </div>
+      </div>
+      <div class="fc-controls">
+        <button class="fc-nav-btn" onclick="prevCard()">←</button>
+        <button class="fc-shuffle" onclick="shuffleCards()">⤨ shuffle</button>
+        <button class="fc-nav-btn" onclick="nextCard()">→</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="view" id="view-quiz">
+    <div class="section-head"><span class="idx">test</span><h2>Knowledge check</h2><div class="rule"></div></div>
+    <div class="quiz-shell">
+      <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="quiz-progress-fill"></div></div>
+      <div id="quiz-container"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">DB StudyPal · Unit 8 Database Management · Built for A/L ICT, NIE syllabus (2017)</footer>
+
+<script>
+/* ================= VIEW SWITCHING ================= */
+function switchView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===id));
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click', ()=>switchView(b.dataset.view)));
+
+/* ================= ACCORDION ================= */
+function toggleTopic(headEl){
+  const topic = headEl.parentElement;
+  const body = topic.querySelector('.topic-body');
+  const isOpen = topic.classList.contains('open');
+  // close siblings in same list for tidiness (optional: keep independent)
+  if(isOpen){
+    topic.classList.remove('open');
+    body.style.maxHeight = null;
+  } else {
+    topic.classList.add('open');
+    body.style.maxHeight = body.scrollHeight + 40 + 'px';
+  }
+}
+
+/* ================= NOTES DATA ================= */
+const notes81 = [
+ {t:"Data vs. Information", body:`
+   <p><strong>Data</strong> is raw, unorganized facts that need processing — e.g. each student's test score.</p>
+   <p><strong>Information</strong> is data that has been processed, organized, or presented in context to make it useful — e.g. the average score of a class.</p>`},
+ {t:"Structured vs. Unstructured data", body:`
+   <p><strong>Structured data</strong> is highly organized, easily searchable in relational databases, usually quantitative. Eg: names, dates, addresses, credit card numbers.</p>
+   <p><strong>Unstructured data</strong> has no pre-defined format, is qualitative, and is harder to process with conventional tools. Eg: text, video, audio, social media activity, satellite imagery.</p>`},
+ {t:"What is a database?", body:`
+   <p>A collection of information organized so it can be easily accessed, managed, and updated.</p>
+   <div class="pill-row">
+     <span class="pill adv">+ reduced redundancy</span><span class="pill adv">+ data integrity</span>
+     <span class="pill adv">+ improved security</span><span class="pill adv">+ lower cost</span>
+   </div>
+   <div class="pill-row">
+     <span class="pill dis">− complex to design</span><span class="pill dis">− high setup cost</span>
+     <span class="pill dis">− damage affects all apps</span>
+   </div>
+   <p class="sub">Features: minimum duplication, saves storage, high-level security, permanent storage, backup &amp; recovery, multi-user access control.</p>`},
+ {t:"Database models overview", body:`
+   <p>A database model defines the logical design and how data is stored, accessed, and updated. Six key models:</p>
+   <ul><li>Flat file system</li><li>Hierarchical Model</li><li>Network Model</li><li>Entity-Relationship Model</li><li>Relational Model</li><li>Object-Relational Model</li></ul>`},
+ {t:"Flat File System", body:`
+   <p>Stores data in a single table.</p>
+   <p class="sub">Limitations: separation/isolation of data, duplication, incompatible file formats, data dependence, fixed queries, inability to generate timely reports.</p>`},
+ {t:"Hierarchical Model", body:`
+   <p>Organizes data into a <strong>tree structure</strong> with a single root; each child has only <strong>one parent</strong>. Models one-to-many relationships (e.g. one department → many courses).</p>
+   <div class="pill-row"><span class="pill adv">+ simplicity</span><span class="pill adv">+ data security</span><span class="pill adv">+ data integrity</span><span class="pill adv">+ efficiency</span></div>
+   <div class="pill-row"><span class="pill dis">− implementation complexity</span><span class="pill dis">− lacks structural independence</span></div>`},
+ {t:"Network Model", body:`
+   <p>An extension of the hierarchical model — data organized like a <strong>graph</strong>, and a child can have <strong>more than one parent</strong>. Maps many-to-many relationships. Was the most widely used model before the Relational Model.</p>
+   <div class="pill-row"><span class="pill adv">+ handles more relationships</span><span class="pill adv">+ ease of access</span><span class="pill adv">+ data independence</span></div>
+   <div class="pill-row"><span class="pill dis">− system complexity</span><span class="pill dis">− no structural independence</span></div>`},
+ {t:"Entity-Relationship Model", body:`
+   <p>Relationships are created by dividing objects of interest into <strong>entities</strong> and their characteristics into <strong>attributes</strong>. Used to design a database that is later turned into relational tables.</p>
+   <p class="sub">Eg: Student (entity) has attributes name, age, address; Address can itself become a separate entity if complex.</p>`},
+ {t:"Relational Model", body:`
+   <p>Data is organized in two-dimensional <strong>tables</strong>; relationships are maintained via a common field. Introduced by <strong>E.F. Codd in 1970</strong> — the only database model in widespread global use today. Tables are also called <em>relations</em>.</p>`},
+ {t:"Object-Relational Model", body:`
+   <p>Combines object-oriented (objects, classes, inheritance) with relational (data types, tabular structures) models.</p>
+   <div class="pill-row"><span class="pill adv">+ inheritance</span><span class="pill adv">+ complex data types</span><span class="pill adv">+ extensibility</span></div>
+   <div class="pill-row"><span class="pill dis">− complicated to handle</span></div>`},
+];
+
+const notes82 = [
+ {t:"Tables & three major components", body:`
+   <p>A relational model has three components:</p>
+   <ul><li><strong>Data structure</strong> — the set of relations and domains defining how data is represented.</li>
+   <li><strong>Data integrity</strong> — rules protecting the data.</li>
+   <li><strong>Data manipulation</strong> — operations performed on the data.</li></ul>`},
+ {t:"Components of a table (relation)", body:`
+   <ul>
+     <li><strong>Attribute/column</strong> — each column of data.</li>
+     <li><strong>Tuple/Row/Record</strong> — each row of data.</li>
+     <li><strong>Cardinality</strong> — number of tuples/rows in the table.</li>
+     <li><strong>Degree</strong> — number of attributes in the relation.</li>
+     <li><strong>Domain</strong> — set of all possible values an attribute may contain.</li>
+   </ul>`},
+ {t:"Relationships: 1:1, 1:M, M:N", body:`
+   <p><strong>One-to-one</strong> — a row in one table matches only one row in another.</p>
+   <p><strong>One-to-many</strong> — a row in one table can match many rows in another, but not vice versa.</p>
+   <p><strong>Many-to-many</strong> — rows in both tables can match many rows in each other (needs a linking table).</p>`},
+ {t:"Constraints", body:`
+   <p>Rules enforced on columns to ensure accuracy and reliability of data — column-level or table-level.</p>
+   <ul>
+     <li><strong>NOT NULL</strong> — must always contain a value.</li>
+     <li><strong>UNIQUE</strong> — no duplicate values in the column.</li>
+     <li><strong>PRIMARY KEY</strong> — a UNIQUE constraint used to identify each row.</li>
+     <li><strong>FOREIGN KEY</strong> — maps two tables together; enforces a parent-child relationship.</li>
+     <li><strong>CHECK</strong> — checks a specific condition, e.g. 25 &lt; age &lt; 32.</li>
+     <li><strong>DEFAULT</strong> — value inserted automatically when none is provided.</li>
+   </ul>`},
+];
+
+const notes83 = [
+ {t:"What is a DBMS?", body:`
+   <p>Database Management System — software used to create and manage databases, giving users a systematic way to create, retrieve, update, and manage data.</p>
+   <p class="sub">Components: <strong>Software</strong> (programs controlling the DB), <strong>Hardware</strong> (physical devices), <strong>Data</strong> (what's stored), <strong>Procedures</strong> (rules for using the DBMS).</p>`},
+ {t:"Database access languages: DDL / DML / DCL / TCL", body:`
+   <p><strong>DDL</strong> (Data Definition Language) — defines meta-data: schema, tables, constraints, indexes. Eg: CREATE, ALTER, DROP, TRUNCATE, RENAME.</p>
+   <p><strong>DML</strong> (Data Manipulation Language) — handles user requests: insert, delete, update, retrieve. Eg: SELECT, WHERE, INSERT, UPDATE, DELETE.</p>
+   <p class="sub">DCL controls permissions; TCL manages transactions.</p>`},
+ {t:"SQL essentials", body:`
+   <p>SQL = Structured Query Language, a standard language for storing, manipulating, and retrieving data. Became an ANSI standard in <strong>1986</strong> and ISO standard in <strong>1987</strong>.</p>
+   <p class="sub">SQL can query, insert, update, delete records; create databases, tables, procedures, and views; and set permissions.</p>`},
+ {t:"RDBMS terminology", body:`
+   <p>RDBMS = Relational Database Management System — the basis of SQL and systems like MySQL, Oracle, MS SQL Server.</p>
+   <ul><li><strong>Table</strong> — collection of related data (rows + columns).</li>
+   <li><strong>Field/column</strong> — vertical entity holding one attribute across all rows.</li>
+   <li><strong>Record/row</strong> — one horizontal entry in a table.</li></ul>`},
+];
+
+const notes84 = [
+ {t:"ER Diagram basics", body:`
+   <p>A graphical representation depicting relationships among people, objects, places, concepts, or events.</p>
+   <ul>
+     <li><strong>Entity</strong> — rectangle.</li>
+     <li><strong>Attribute</strong> — ellipse, connected directly to its entity.</li>
+     <li><strong>Multivalued attribute</strong> — double ellipse.</li>
+     <li><strong>Derived attribute</strong> — dashed ellipse (value calculated from other attributes).</li>
+     <li><strong>Relationship</strong> — diamond, connecting participating entities.</li>
+   </ul>
+   <p class="sub">A <strong>weak entity</strong> has no key attribute of its own that can uniquely identify it.</p>`},
+ {t:"Cardinality in ER diagrams", body:`
+   <p><strong>1:1</strong> — one instance on each side. <strong>1:M (1:N)</strong> — one instance on one side, many on the other. <strong>M:N</strong> — many instances on both sides.</p>
+   <p class="sub">Cardinality = the number of instances of an entity that can be associated with the relationship.</p>`},
+ {t:"EER: Generalization, Specialization, Aggregation", body:`
+   <p>An <strong>EER diagram</strong> extends the standard ER model for more complex applications.</p>
+   <ul>
+     <li><strong>Generalization</strong> — combining lower-level entities into a higher-level entity (bottom-up). Eg: Student + Lecturer → Person.</li>
+     <li><strong>Specialization</strong> — the opposite: dividing a high-level entity into lower-level entities (top-down). Eg: Person → Student, Lecturer.</li>
+     <li><strong>Aggregation</strong> — treating the relationship between two entities as a single entity. Eg: (Exam Center — conducts — Exam) treated as one entity that a Student enquires about.</li>
+   </ul>`},
+];
+
+const notesErdMap = [
+ {t:"Mapping simple attributes", body:`
+   <p>An entity with only simple attributes maps directly: <code class="inline">location(latitude, longitude, description, last_visited)</code> — the underlined attribute is the primary key.</p>`},
+ {t:"Mapping many-to-many relationships", body:`
+   <p>A many-to-many relationship becomes its <strong>own table</strong> holding the foreign keys of both entities plus any relationship attributes:</p>
+   <p><code class="inline">customer(cust_id, name, street_address, city)</code></p>
+   <p><code class="inline">loan(loan_id, amount)</code></p>
+   <p><code class="inline">borrower(cust_id, loan_id, access_date)</code> — the linking table.</p>`},
+ {t:"Mapping weak entities", body:`
+   <p>A weak entity's primary key combines its own discriminator with the strong entity's key:</p>
+   <p><code class="inline">account(account_number, balance)</code></p>
+   <p><code class="inline">check(account_number, check_number, check_date, recipient, amount, memo)</code> — check_number alone isn't unique; it needs account_number too.</p>`},
+];
+
+const notes85 = [
+ {t:"Physical vs. Logical schema", body:`
+   <p>A <strong>database schema</strong> is the skeleton structure representing the logical view of the whole database — its entities, relationships, and constraints.</p>
+   <p><strong>Physical schema</strong> — how data is actually stored (files, indices, secondary storage).</p>
+   <p><strong>Logical schema</strong> — defines tables, views, and integrity constraints (the logical constraints on stored data).</p>
+   <p class="sub"><strong>Relational schema</strong> = the meta-data blueprint of how tables are structured. <strong>Relational instance</strong> = the actual finite set of tuples at a point in time.</p>`},
+ {t:"Types of keys", body:`
+   <ul>
+     <li><strong>Primary key</strong> — uniquely identifies each row; cannot be null or duplicated; a table has only one.</li>
+     <li><strong>Candidate key</strong> — a minimal set of attributes that could serve as the primary key; every table has at least one.</li>
+     <li><strong>Alternate key</strong> — a candidate key not chosen as primary key.</li>
+     <li><strong>Foreign key</strong> — a column referencing the primary key of another table; maintains data integrity.</li>
+     <li><strong>Super key</strong> — any set of attributes (possibly with extras) that uniquely identifies rows.</li>
+     <li><strong>Composite key</strong> — two+ columns that together uniquely identify a row (individually may not be unique).</li>
+     <li><strong>Compound key</strong> — like composite, but any part of it can be a foreign key.</li>
+   </ul>`},
+ {t:"Domain & domain constraints", body:`
+   <p>A <strong>domain</strong> is the unique set of permitted values for an attribute (e.g. month-of-year accepts Jan–Dec only). <strong>Domain constraint</strong> = data type + constraint (NOT NULL / UNIQUE / PRIMARY KEY / FOREIGN KEY / CHECK / DEFAULT).</p>`},
+ {t:"Functional dependency", body:`
+   <p>If P functionally determines Q, written <code class="inline">P → Q</code>, then for every value of P there is exactly one value of Q. Eg: <code class="inline">EmpID → EmpName</code>.</p>
+   <p><strong>Fully functional dependency</strong> — Q depends on the whole of P, not a subset of it. Eg: <code class="inline">{EmpID, ProjectID} → Days</code>, not on EmpID or ProjectID alone.</p>
+   <p><strong>Transitive dependency</strong> — if P → Q and Q → R, then P → R indirectly.</p>
+   <p><strong>Multivalued dependency</strong> — one row implies the existence of several other independent rows for the same key, written <code class="inline">P ->-> Q</code>.</p>
+   <p><strong>Partial dependency</strong> — a non-prime attribute depends on only part of a composite candidate key.</p>`},
+ {t:"Normalization — purpose and anomalies", body:`
+   <p>Normalization systematically decomposes tables to eliminate redundancy and dependency problems.</p>
+   <ul>
+     <li><strong>Insertion anomaly</strong> — can't insert data without unnecessary repetition (e.g. re-entering branch info for every student).</li>
+     <li><strong>Update anomaly</strong> — the same fact stored in multiple rows must be updated everywhere, risking inconsistency.</li>
+     <li><strong>Deletion anomaly</strong> — deleting one fact accidentally deletes another needed fact.</li>
+   </ul>`},
+ {t:"1NF, 2NF, 3NF", body:`
+   <p><strong>1NF</strong> — atomic (single) values only; same domain per column; unique column names; row order doesn't matter.</p>
+   <p><strong>2NF</strong> — must be in 1NF and have <strong>no partial dependency</strong> (non-prime attributes must depend on the whole candidate key).</p>
+   <p><strong>3NF</strong> — must be in 2NF and have <strong>no transitive dependency</strong>.</p>`},
+];
+
+function renderNotes(containerId, items){
+  const c = document.getElementById(containerId);
+  items.forEach((item, i)=>{
+    const div = document.createElement('div');
+    div.className = 'topic';
+    div.innerHTML = `
+      <div class="topic-head" onclick="toggleTopic(this)">
+        <div class="topic-head-left"><span class="topic-num">${String(i+1).padStart(2,'0')}</span><span class="topic-title">${item.t}</span></div>
+        <span class="topic-chevron">▸</span>
+      </div>
+      <div class="topic-body"><div class="topic-body-inner">${item.body}</div></div>`;
+    c.appendChild(div);
+  });
+}
+renderNotes('notes-81', notes81);
+renderNotes('notes-82', notes82);
+renderNotes('notes-83', notes83);
+renderNotes('notes-84', notes84);
+renderNotes('notes-85', notes85);
+renderNotes('notes-erd-map', notesErdMap);
+
+/* ================= ERD LEGEND ================= */
+const erdLegend = [
+  {shape:'entity', label:'Entity — rectangle'},
+  {shape:'weak', label:'Weak entity — double rectangle'},
+  {shape:'relationship', label:'Relationship — diamond'},
+  {shape:'weakrel', label:'Weak entity relationship — double diamond'},
+  {shape:'attribute', label:'Attribute — ellipse'},
+  {shape:'keyattr', label:'Key attribute — underlined', underline:true},
+  {shape:'mvattr', label:'Multivalued attribute — double ellipse'},
+  {shape:'derived', label:'Derived attribute — dashed ellipse'},
+];
+const erdLegendEl = document.getElementById('erd-legend');
+erdLegend.forEach(item=>{
+  const d = document.createElement('div');
+  d.className = 'legend-item';
+  const labelClass = item.underline ? 'legend-label underline' : 'legend-label';
+  d.innerHTML = `<div class="shape ${item.shape}"></div><div class="${labelClass}">${item.label}</div>`;
+  erdLegendEl.appendChild(d);
+});
+
+/* ================= ERD PRACTICE (mini quiz) ================= */
+const erdPracticeQs = [
+  {q:"One teacher is assigned as teacher-in-charge for only one class, and each class has only one teacher-in-charge. What cardinality is this?", opts:["1:1","1:M","M:N"], answer:0},
+  {q:"A teacher can teach several subjects, and a subject can be taught by several teachers. What cardinality is this?", opts:["1:1","1:M","M:N"], answer:2},
+  {q:"One department has many courses. What cardinality is this?", opts:["1:1","1:M","M:N"], answer:1},
+];
+const erdPracticeEl = document.getElementById('erd-practice');
+erdPracticeQs.forEach((item, idx)=>{
+  const wrap = document.createElement('div');
+  wrap.className = 'quiz-card';
+  wrap.style.marginBottom = '14px';
+  wrap.innerHTML = `<div class="quiz-q" style="font-size:0.95rem;">${item.q}</div>
+    <div class="quiz-options" id="erdp-${idx}"></div>`;
+  erdPracticeEl.appendChild(wrap);
+  const optsEl = wrap.querySelector('.quiz-options');
+  item.opts.forEach((opt, oi)=>{
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt';
+    btn.innerHTML = `<span class="letter">${String.fromCharCode(65+oi)}</span>${opt}`;
+    btn.onclick = ()=>{
+      [...optsEl.children].forEach(b=>b.disabled=true);
+      if(oi===item.answer){ btn.classList.add('correct'); }
+      else { btn.classList.add('wrong'); optsEl.children[item.answer].classList.add('correct'); }
+    };
+    optsEl.appendChild(btn);
+  });
+});
+
+/* ================= NORMALIZATION CARDS ================= */
+const anomalies = [
+  {tag:"Insertion", title:"Insertion anomaly", desc:"Inserting 100 students of the same branch repeats the branch info 100 times."},
+  {tag:"Update", title:"Update anomaly", desc:"A change (e.g. a branch name) must be updated in every matching row, or data becomes inconsistent."},
+  {tag:"Deletion", title:"Deletion anomaly", desc:"Deleting the last student of a branch accidentally deletes the branch info too."},
+];
+const anomalyEl = document.getElementById('anomaly-cards');
+anomalies.forEach(a=>{
+  const d = document.createElement('div');
+  d.className = 'norm-card';
+  d.innerHTML = `<span class="tag">${a.tag}</span><h4>${a.title}</h4><p>${a.desc}</p>`;
+  anomalyEl.appendChild(d);
+});
+
+const normForms = [
+  {tag:"1NF", title:"First Normal Form", desc:"Atomic values only, same domain per column, unique column names, row order irrelevant."},
+  {tag:"2NF", title:"Second Normal Form", desc:"Must be in 1NF, and no non-prime attribute may depend on only part of a composite key."},
+  {tag:"3NF", title:"Third Normal Form", desc:"Must be in 2NF, and no non-prime attribute may transitively depend on the key."},
+];
+const nfEl = document.getElementById('normalform-cards');
+normForms.forEach(a=>{
+  const d = document.createElement('div');
+  d.className = 'norm-card';
+  d.innerHTML = `<span class="tag">${a.tag}</span><h4>${a.title}</h4><p>${a.desc}</p>`;
+  nfEl.appendChild(d);
+});
+
+/* ================= SQL LAB ================= */
+const sqlScenarios = [
+  {
+    title:"Create a table with a primary key",
+    scenario:"Create a Persons table with ID, LastName, FirstName, Age — where ID uniquely identifies each row.",
+    answer:`<span class="kw">CREATE TABLE</span> Persons (
+  ID <span class="kw">int</span> <span class="kw">NOT NULL</span>,
+  LastName <span class="kw">varchar</span>(255),
+  FirstName <span class="kw">varchar</span>(255),
+  Age <span class="kw">int</span>,
+  <span class="kw">PRIMARY KEY</span> (ID)
+);`
+  },
+  {
+    title:"Link two tables with a foreign key",
+    scenario:"Create an Orders table where PersonID references the Persons table's primary key.",
+    answer:`<span class="kw">CREATE TABLE</span> Orders (
+  OrderID <span class="kw">int</span> <span class="kw">NOT NULL</span>,
+  OrderNumber <span class="kw">int</span> <span class="kw">NOT NULL</span>,
+  PersonID <span class="kw">int</span>,
+  <span class="kw">PRIMARY KEY</span> (OrderID),
+  <span class="kw">FOREIGN KEY</span> (PersonID) <span class="kw">REFERENCES</span> Persons(PersonID)
+);`
+  },
+  {
+    title:"Filter with a condition",
+    scenario:"Select all customers located in 'Mexico'.",
+    answer:`<span class="kw">SELECT</span> * <span class="kw">FROM</span> customers
+<span class="kw">WHERE</span> country = <span class="str">'Mexico'</span>;`
+  },
+  {
+    title:"Combine conditions",
+    scenario:"Select all customers in Germany, specifically in the city of Berlin.",
+    answer:`<span class="kw">SELECT</span> * <span class="kw">FROM</span> customers
+<span class="kw">WHERE</span> country = <span class="str">'Germany'</span> <span class="kw">AND</span> city = <span class="str">'Berlin'</span>;`
+  },
+  {
+    title:"Join two tables",
+    scenario:"List each order's ID and date, along with the customer's name.",
+    answer:`<span class="kw">SELECT</span> Orders.OrderID, Customers.CustomerName, Orders.OrderDate
+<span class="kw">FROM</span> Orders
+<span class="kw">INNER JOIN</span> Customers <span class="kw">ON</span> Orders.CustomerID = Customers.CustomerID;`
+  },
+  {
+    title:"Aggregate function",
+    scenario:"Find the average product price.",
+    answer:`<span class="kw">SELECT</span> <span class="kw">AVG</span>(Price) <span class="kw">FROM</span> products;
+<span class="com">-- NULL values are ignored by AVG()</span>`
+  },
+  {
+    title:"Add a CHECK constraint",
+    scenario:"Ensure no person under 18 can be inserted into the Persons table.",
+    answer:`<span class="kw">CREATE TABLE</span> Persons (
+  ID <span class="kw">int</span> <span class="kw">NOT NULL</span>,
+  LastName <span class="kw">varchar</span>(255) <span class="kw">NOT NULL</span>,
+  Age <span class="kw">int</span>,
+  <span class="kw">CHECK</span> (Age >= 18)
+);`
+  },
+  {
+    title:"Update a record",
+    scenario:"Change customer #1's city to 'Hamburg'.",
+    answer:`<span class="kw">UPDATE</span> customers
+<span class="kw">SET</span> city = <span class="str">'Hamburg'</span>
+<span class="kw">WHERE</span> customerID = 1;
+<span class="com">-- omitting WHERE updates every row!</span>`
+  },
+];
+const sqlEl = document.getElementById('sql-scenarios');
+sqlScenarios.forEach((s, i)=>{
+  const div = document.createElement('div');
+  div.className = 'sql-lab';
+  div.innerHTML = `
+    <div class="sql-lab-head"><span>#${i+1} — ${s.title}</span><span>SQL</span></div>
+    <div class="sql-lab-body">
+      <div class="sql-scenario">${s.scenario}</div>
+      <button class="sql-answer-toggle" onclick="toggleSql(this)">Reveal answer</button>
+      <div class="sql-answer"><div class="sql-block">${s.answer}</div></div>
+    </div>`;
+  sqlEl.appendChild(div);
+});
+function toggleSql(btn){
+  const ans = btn.nextElementSibling;
+  ans.classList.toggle('show');
+  btn.textContent = ans.classList.contains('show') ? 'Hide answer' : 'Reveal answer';
+}
+
+/* ================= FLASHCARDS ================= */
+const flashData = [
+  {cat:"Models", f:"Flat file system", b:"Stores data in a single table; suffers from data duplication and fixed queries."},
+  {cat:"Models", f:"Hierarchical Model", b:"Tree structure with a single root; each child has only one parent; models 1:M relationships."},
+  {cat:"Models", f:"Network Model", b:"Graph-like structure; a child can have multiple parents; models M:N relationships."},
+  {cat:"Models", f:"Relational Model", b:"Data organized in 2D tables; introduced by E.F. Codd in 1970; the dominant model today."},
+  {cat:"Models", f:"Object-Relational Model", b:"Combines object-oriented features (inheritance, complex types) with relational tables."},
+  {cat:"Models", f:"Entity-Relationship Model", b:"Divides objects into entities and attributes; used to design a database before building relational tables."},
+  {cat:"Core Concepts", f:"Data", b:"Raw, unorganized facts that need processing."},
+  {cat:"Core Concepts", f:"Information", b:"Data that has been processed, organized, or presented in context to be useful."},
+  {cat:"Core Concepts", f:"Structured data", b:"Highly organized, quantitative, easily searchable in relational databases."},
+  {cat:"Core Concepts", f:"Unstructured data", b:"No pre-defined format; qualitative; hard to process with conventional tools."},
+  {cat:"Core Concepts", f:"Database", b:"A collection of information organized for easy access, management, and updates."},
+  {cat:"Table Components", f:"Attribute", b:"A column of data in a relation."},
+  {cat:"Table Components", f:"Tuple", b:"A row/record in a relation."},
+  {cat:"Table Components", f:"Cardinality (of a relation)", b:"The number of tuples/rows in a table."},
+  {cat:"Table Components", f:"Degree (of a relation)", b:"The number of attributes in a relation."},
+  {cat:"Table Components", f:"Domain", b:"The set of all possible values an attribute may contain."},
+  {cat:"Relationships", f:"One-to-one", b:"A row in one table matches only one row in another table."},
+  {cat:"Relationships", f:"One-to-many", b:"A row in one table can match many rows in another, but not the reverse."},
+  {cat:"Relationships", f:"Many-to-many", b:"Rows in both tables can match many rows in the other; needs a linking table."},
+  {cat:"Constraints", f:"NOT NULL", b:"Forces a column to always contain a value."},
+  {cat:"Constraints", f:"UNIQUE", b:"Ensures all values in a column are different — no duplicates."},
+  {cat:"Constraints", f:"PRIMARY KEY", b:"A NOT NULL + UNIQUE constraint that uniquely identifies each row."},
+  {cat:"Constraints", f:"FOREIGN KEY", b:"A column that references the primary key of another table, enforcing parent-child relationships."},
+  {cat:"Constraints", f:"CHECK", b:"Limits the value range allowed in a column, e.g. Age >= 18."},
+  {cat:"Constraints", f:"DEFAULT", b:"Sets an automatic value when none is provided."},
+  {cat:"Keys", f:"Candidate key", b:"A minimal attribute set that could uniquely identify each row; every table has at least one."},
+  {cat:"Keys", f:"Alternate key", b:"A candidate key that was not chosen as the primary key."},
+  {cat:"Keys", f:"Super key", b:"Any attribute set — possibly with extra attributes — that uniquely identifies rows."},
+  {cat:"Keys", f:"Composite key", b:"Two or more columns that together uniquely identify a row."},
+  {cat:"Keys", f:"Compound key", b:"Like a composite key, but any part of it can also be a foreign key."},
+  {cat:"DBMS", f:"DBMS", b:"Database Management System — software to create, retrieve, update, and manage data systematically."},
+  {cat:"DBMS", f:"DDL", b:"Data Definition Language — defines schema/tables/constraints (CREATE, ALTER, DROP)."},
+  {cat:"DBMS", f:"DML", b:"Data Manipulation Language — handles data requests (SELECT, INSERT, UPDATE, DELETE)."},
+  {cat:"SQL", f:"SQL", b:"Structured Query Language — the standard language for storing, manipulating, and retrieving data (ANSI 1986, ISO 1987)."},
+  {cat:"SQL", f:"INNER JOIN", b:"Returns records with matching values in both tables."},
+  {cat:"SQL", f:"LEFT JOIN", b:"Returns all records from the left table, plus matches from the right."},
+  {cat:"SQL", f:"RIGHT JOIN", b:"Returns all records from the right table, plus matches from the left."},
+  {cat:"SQL", f:"FULL OUTER JOIN", b:"Returns all records when there's a match in either table."},
+  {cat:"SQL", f:"UNION operator", b:"Combines the result sets of two or more SELECT statements."},
+  {cat:"SQL", f:"AUTO_INCREMENT", b:"Automatically generates a unique number for a new record."},
+  {cat:"ER Diagram", f:"Entity (ER notation)", b:"Represented by a rectangle."},
+  {cat:"ER Diagram", f:"Attribute (ER notation)", b:"Represented by an ellipse, connected to its entity."},
+  {cat:"ER Diagram", f:"Multivalued attribute", b:"Represented by a double ellipse."},
+  {cat:"ER Diagram", f:"Derived attribute", b:"Represented by a dashed ellipse — its value is calculated from other attributes."},
+  {cat:"ER Diagram", f:"Relationship (ER notation)", b:"Represented by a diamond-shaped box."},
+  {cat:"ER Diagram", f:"Weak entity", b:"An entity type with no key attribute that can uniquely identify it on its own."},
+  {cat:"ER Diagram", f:"Generalization", b:"Combining lower-level entities into one higher-level entity (bottom-up)."},
+  {cat:"ER Diagram", f:"Specialization", b:"Dividing a high-level entity into lower-level entities (top-down)."},
+  {cat:"ER Diagram", f:"Aggregation", b:"Treating the relationship between two entities as a single entity."},
+  {cat:"Normalization", f:"Normalization", b:"A systematic process of decomposing tables to eliminate redundancy and dependency anomalies."},
+  {cat:"Normalization", f:"Insertion anomaly", b:"Inserting a new record forces unnecessary repetition of related data."},
+  {cat:"Normalization", f:"Update anomaly", b:"The same fact must be updated in multiple places, risking inconsistency."},
+  {cat:"Normalization", f:"Deletion anomaly", b:"Deleting one record accidentally removes other needed information."},
+  {cat:"Normalization", f:"Functional dependency", b:"If P determines Q (P → Q), each value of P maps to exactly one value of Q."},
+  {cat:"Normalization", f:"Fully functional dependency", b:"Q depends on the whole of key P, not on any subset of P."},
+  {cat:"Normalization", f:"Transitive dependency", b:"If P → Q and Q → R, then P → R indirectly."},
+  {cat:"Normalization", f:"Partial dependency", b:"A non-prime attribute depends on only part of a composite candidate key."},
+  {cat:"Normalization", f:"1NF", b:"Atomic values, same domain per column, unique column names, row order irrelevant."},
+  {cat:"Normalization", f:"2NF", b:"1NF + no partial dependency."},
+  {cat:"Normalization", f:"3NF", b:"2NF + no transitive dependency."},
+  {cat:"Schema", f:"Database schema", b:"The skeleton structure representing the logical view of the entire database."},
+];
+
+let fcOrder = flashData.map((_,i)=>i);
+let fcIndex = 0;
+let fcCategory = "All";
+let fcFlipped = false;
+
+function fcCategories(){
+  return ["All", ...new Set(flashData.map(d=>d.cat))];
+}
+function renderFcFilters(){
+  const el = document.getElementById('fc-filter');
+  el.innerHTML = '';
+  fcCategories().forEach(cat=>{
+    const btn = document.createElement('button');
+    btn.textContent = cat;
+    btn.className = cat===fcCategory ? 'active' : '';
+    btn.onclick = ()=>{ fcCategory = cat; applyFcFilter(); };
+    el.appendChild(btn);
+  });
+}
+function applyFcFilter(){
+  fcOrder = flashData.map((_,i)=>i).filter(i=> fcCategory==="All" || flashData[i].cat===fcCategory);
+  fcIndex = 0;
+  fcFlipped = false;
+  renderFcFilters();
+  renderCard();
+}
+function renderCard(){
+  const card = document.getElementById('flashcard');
+  card.classList.remove('flipped');
+  fcFlipped = false;
+  if(fcOrder.length===0){
+    document.getElementById('fc-front-text').textContent = "No cards in this category.";
+    document.getElementById('fc-back-text').textContent = "";
+    document.getElementById('fc-progress').textContent = "0 / 0";
+    return;
+  }
+  const d = flashData[fcOrder[fcIndex]];
+  document.getElementById('fc-cat-front').textContent = d.cat;
+  document.getElementById('fc-cat-back').textContent = d.cat;
+  document.getElementById('fc-front-text').textContent = d.f;
+  document.getElementById('fc-back-text').textContent = d.b;
+  document.getElementById('fc-progress').textContent = `${fcIndex+1} / ${fcOrder.length}`;
+}
+function flipCard(){
+  fcFlipped = !fcFlipped;
+  document.getElementById('flashcard').classList.toggle('flipped', fcFlipped);
+}
+function nextCard(){ if(fcOrder.length===0) return; fcIndex = (fcIndex+1) % fcOrder.length; renderCard(); }
+function prevCard(){ if(fcOrder.length===0) return; fcIndex = (fcIndex-1+fcOrder.length) % fcOrder.length; renderCard(); }
+function shuffleCards(){
+  for(let i=fcOrder.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [fcOrder[i], fcOrder[j]] = [fcOrder[j], fcOrder[i]];
+  }
+  fcIndex = 0;
+  renderCard();
+}
+renderFcFilters();
+renderCard();
+
+/* ================= QUIZ ================= */
+const quizData = [
+  {q:"What term describes data that has been processed and presented in context to be useful?", opts:["Information","Metadata","A record","A schema"], a:0, exp:"Information is data that has been processed, organized, or presented in a given context."},
+  {q:"Which type of data is most often qualitative and lacks a pre-defined format?", opts:["Structured data","Unstructured data","Relational data","Normalized data"], a:1, exp:"Unstructured data (text, video, audio, etc.) has no pre-defined format and is qualitative."},
+  {q:"In which database model does a child node have only one parent?", opts:["Network Model","Relational Model","Hierarchical Model","Object-Relational Model"], a:2, exp:"The Hierarchical Model organizes data in a tree with each child having a single parent."},
+  {q:"Which model was the most widely used before the Relational Model was introduced?", opts:["Flat file system","Network Model","ER Model","Object-Relational Model"], a:1, exp:"The Network Model was dominant before the Relational Model appeared."},
+  {q:"Who introduced the Relational Model, and in what year?", opts:["Alan Turing, 1950","E.F. Codd, 1970","Tim Berners-Lee, 1989","Bill Gates, 1975"], a:1, exp:"E.F. Codd introduced the Relational Model in 1970."},
+  {q:"In relational database terms, what is another name for a table?", opts:["A domain","A tuple","A relation","An attribute"], a:2, exp:"Tables are also known as relations in the relational model."},
+  {q:"What is a 'tuple' in a relational table?", opts:["A column","A row/record","A constraint","A data type"], a:1, exp:"A tuple is a row (record) of data in a relation."},
+  {q:"'Degree of a relation' refers to:", opts:["The number of rows","The number of attributes","The number of databases","The number of foreign keys"], a:1, exp:"Degree = the number of attributes (columns) in a relation."},
+  {q:"A row in one table matching many rows in another, but not vice versa, describes:", opts:["One-to-one","One-to-many","Many-to-many","Many-to-one only"], a:1, exp:"This is the definition of a one-to-many relationship."},
+  {q:"Which constraint ensures a column can never contain a NULL value?", opts:["UNIQUE","CHECK","NOT NULL","DEFAULT"], a:2, exp:"NOT NULL forces a column to always contain a value."},
+  {q:"A foreign key in a child table references which key in the parent table?", opts:["Any unique column","The primary key","The default value","The candidate key only"], a:1, exp:"A foreign key references the primary key of the parent (referenced) table."},
+  {q:"Which SQL command category includes CREATE, ALTER, and DROP?", opts:["DML","DDL","DCL","TCL"], a:1, exp:"DDL (Data Definition Language) defines the database structure: CREATE, ALTER, DROP, etc."},
+  {q:"Which SQL command category includes SELECT, INSERT, UPDATE, and DELETE?", opts:["DDL","DML","DCL","TCL"], a:1, exp:"DML (Data Manipulation Language) manipulates data: SELECT, INSERT, UPDATE, DELETE."},
+  {q:"Which JOIN returns all records from the left table plus matches from the right table?", opts:["INNER JOIN","RIGHT JOIN","LEFT JOIN","FULL OUTER JOIN"], a:2, exp:"LEFT (OUTER) JOIN keeps all left-table rows, matching where possible from the right."},
+  {q:"In an ER diagram, what shape represents an attribute?", opts:["Rectangle","Diamond","Ellipse","Triangle"], a:2, exp:"Attributes are represented as ellipses connected to their entity."},
+  {q:"What is a 'weak entity' in ER modeling?", opts:["An entity with no attributes", "An entity type with no key attribute that can uniquely identify it alone", "An entity involved in no relationships", "A deprecated entity"], a:1, exp:"A weak entity lacks its own key attribute and depends on a related strong entity for identification."},
+  {q:"Combining lower-level entities into one higher-level entity (bottom-up) is called:", opts:["Specialization","Aggregation","Generalization","Normalization"], a:2, exp:"Generalization combines lower-level entities into a higher-level entity, bottom-up."},
+  {q:"Treating the relationship between two entities as a single entity is called:", opts:["Generalization","Specialization","Aggregation","Composition"], a:2, exp:"Aggregation treats a relationship as if it were itself an entity."},
+  {q:"A non-prime attribute depending on only part of a composite candidate key is:", opts:["Transitive dependency","Partial dependency","Multivalued dependency","Full dependency"], a:1, exp:"This is a partial dependency — the defining problem that 2NF removes."},
+  {q:"To achieve 3NF, a table must be in 2NF and additionally have no:", opts:["Partial dependency","Primary key","Transitive dependency","Foreign key"], a:2, exp:"3NF requires 2NF plus the elimination of transitive dependencies."},
+];
+
+let quizOrder = quizData.map((_,i)=>i);
+let quizIndex = 0;
+let quizScore = 0;
+let quizAnswered = false;
+
+function startQuiz(){
+  quizOrder = quizData.map((_,i)=>i);
+  quizIndex = 0;
+  quizScore = 0;
+  quizAnswered = false;
+  renderQuiz();
+}
+function renderQuiz(){
+  const fill = document.getElementById('quiz-progress-fill');
+  const container = document.getElementById('quiz-container');
+  if(quizIndex >= quizOrder.length){
+    fill.style.width = '100%';
+    const pct = Math.round((quizScore/quizData.length)*100);
+    container.innerHTML = `
+      <div class="quiz-card quiz-result">
+        <div class="score">${quizScore}/${quizData.length}</div>
+        <p>${pct}% correct</p>
+        <button class="btn" style="margin-top:14px;" onclick="startQuiz()">Try again</button>
+      </div>`;
+    return;
+  }
+  fill.style.width = `${(quizIndex/quizData.length)*100}%`;
+  const item = quizData[quizOrder[quizIndex]];
+  quizAnswered = false;
+  container.innerHTML = `
+    <div class="quiz-card">
+      <div class="quiz-meta"><span>Question ${quizIndex+1} of ${quizData.length}</span><span>Score: ${quizScore}</span></div>
+      <div class="quiz-q">${item.q}</div>
+      <div class="quiz-options" id="quiz-opts"></div>
+      <div class="quiz-explain" id="quiz-explain">${item.exp}</div>
+      <div class="quiz-footer">
+        <span></span>
+        <button class="btn" id="quiz-next-btn" style="display:none;" onclick="nextQuizQ()">Next →</button>
+      </div>
+    </div>`;
+  const optsEl = document.getElementById('quiz-opts');
+  item.opts.forEach((opt, oi)=>{
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt';
+    btn.innerHTML = `<span class="letter">${String.fromCharCode(65+oi)}</span>${opt}`;
+    btn.onclick = ()=> selectQuizAnswer(oi, item);
+    optsEl.appendChild(btn);
+  });
+}
+function selectQuizAnswer(oi, item){
+  if(quizAnswered) return;
+  quizAnswered = true;
+  const optsEl = document.getElementById('quiz-opts');
+  [...optsEl.children].forEach((b,i)=>{
+    b.disabled = true;
+    if(i===item.a) b.classList.add('correct');
+    else if(i===oi) b.classList.add('wrong');
+  });
+  if(oi===item.a) quizScore++;
+  document.getElementById('quiz-explain').classList.add('show');
+  document.getElementById('quiz-next-btn').style.display = 'inline-block';
+}
+function nextQuizQ(){
+  quizIndex++;
+  renderQuiz();
+}
+startQuiz();
+</script>
+</body>
+</html>
